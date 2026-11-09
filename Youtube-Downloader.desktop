@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Media Downloader
+Comment=Minimalist High-Speed Video and Audio Downloader
+Exec=/home/yash/Tools/YoutubeVideo/launch.sh
+Icon=multimedia-video-player
+Terminal=false
+Categories=AudioVideo;Network;
+StartupNotify=true
