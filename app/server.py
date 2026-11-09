@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from .downloader import inspect_url, download_media, resolve_downloads_dir
 
-app = FastAPI(title="Media Downloader", version="1.2.0")
+app = FastAPI(title="Media Downloader", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -175,13 +175,20 @@ async def api_browse_folder(req: BrowseFolderRequest):
         initial = os.path.expanduser("~")
 
     def pick():
-        # Try kdialog first (native on KDE Plasma)
+        env = os.environ.copy()
+        if "DISPLAY" not in env:
+            env["DISPLAY"] = ":0"
+
+        # Try zenity first (reliable on Wayland and KDE via freedesktop portal)
         try:
-            env = os.environ.copy()
-            if "DISPLAY" not in env:
-                env["DISPLAY"] = ":0"
             res = subprocess.run(
-                ["kdialog", "--getexistingdirectory", initial],
+                [
+                    "zenity",
+                    "--file-selection",
+                    "--directory",
+                    "--title=Select Download Folder",
+                    f"--filename={initial}/",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -189,21 +196,23 @@ async def api_browse_folder(req: BrowseFolderRequest):
             )
             if res.returncode == 0 and res.stdout.strip():
                 return res.stdout.strip()
-        except Exception:
-            pass
+        except Exception as e:
+            print("Zenity error:", e)
 
-        # Try zenity fallback
+        # Try kdialog fallback (native KDE Plasma dialog)
         try:
             res = subprocess.run(
-                ["zenity", "--file-selection", "--directory", f"--filename={initial}/"],
+                ["kdialog", "--getexistingdirectory", initial, "--title", "Select Download Folder"],
                 capture_output=True,
                 text=True,
                 timeout=120,
+                env=env,
             )
             if res.returncode == 0 and res.stdout.strip():
                 return res.stdout.strip()
-        except Exception:
-            pass
+        except Exception as e:
+            print("Kdialog error:", e)
+
         return None
 
     loop = asyncio.get_event_loop()

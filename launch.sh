@@ -18,15 +18,15 @@ fi
 # Ensure downloads directory exists
 mkdir -p downloads
 
-# Check if server is already running
-if curl -s -o /dev/null -w "%{http_code}" "$URL" | grep -q "200"; then
-    echo "[+] Server is already active at $URL. Opening browser..."
-    xdg-open "$URL" >/dev/null 2>&1 &
-    exit 0
+# Stop any outdated instance running on port 8765
+OLD_PID=$(fuser "${PORT}/tcp" 2>/dev/null || true)
+if [ -n "$OLD_PID" ]; then
+    echo "[*] Updating server on port $PORT (stopping PID $OLD_PID)..."
+    kill -9 $OLD_PID 2>/dev/null || true
+    sleep 0.5
 fi
 
 echo "[*] Launching Media Downloader Web Service on port $PORT..."
-# Start server in background detached from subshell
 nohup .venv/bin/python -m uvicorn app.server:app --host 127.0.0.1 --port "$PORT" </dev/null > server.log 2>&1 &
 SERVER_PID=$!
 disown "$SERVER_PID" 2>/dev/null || true
@@ -40,7 +40,7 @@ for i in {1..15}; do
         xdg-open "$URL" >/dev/null 2>&1 &
         exit 0
     fi
-    sleep 0.4
+    sleep 0.3
 done
 
 echo "[!] Server started. Open $URL in your browser."
