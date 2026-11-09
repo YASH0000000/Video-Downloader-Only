@@ -11,17 +11,17 @@
         <!-- Minimal Top Bar -->
         <header class="topbar">
             <div class="brand">
-                <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                     <path d="M12 3v12m0 0l4-4m-4 4l-4-4"/>
                     <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
                 </svg>
                 <span class="brand-title">vget</span>
             </div>
-            <button id="open-folder-nav-btn" class="nav-btn" type="button">Open Save Folder</button>
+            <button id="open-folder-nav-btn" class="nav-btn" type="button" aria-label="Open current save folder in file manager">Open Save Folder</button>
         </header>
 
         <!-- Main Card -->
-        <main class="panel">
+        <main class="panel" id="main-content">
             <!-- URL Input Section -->
             <div class="field-block">
                 <label for="url-input" class="field-label">Media URL</label>
@@ -33,9 +33,11 @@
                         placeholder="Paste video or playlist link..." 
                         autocomplete="off" 
                         spellcheck="false"
+                        aria-describedby="url-hint error-banner"
                     >
                     <button id="inspect-btn" class="action-btn" type="button">Inspect</button>
                 </div>
+                <span id="url-hint" class="sr-only">Enter a URL from YouTube or supported platforms to inspect formats.</span>
             </div>
 
             <!-- Save Destination Folder (Always Visible) -->
@@ -50,31 +52,33 @@
                         id="save-dir-input" 
                         class="text-input text-mono" 
                         placeholder="/home/yash/Downloads"
+                        aria-describedby="save-dir-note"
                     >
-                    <button id="browse-folder-btn" class="subtle-btn-highlight" type="button">Change Folder...</button>
+                    <button id="browse-folder-btn" class="subtle-btn-highlight" type="button" aria-label="Choose save folder from system file picker">Change Folder...</button>
                 </div>
-                <div class="presets-row">
-                    <span class="preset-label">Quick select:</span>
-                    <button type="button" class="preset-pill active" data-path="/home/yash/Downloads">Downloads</button>
-                    <button type="button" class="preset-pill" data-path="/home/yash/Videos">Videos</button>
-                    <button type="button" class="preset-pill" data-path="/home/yash/Music">Music</button>
+                <span id="save-dir-note" class="field-note">Folder will be created automatically if it does not exist.</span>
+                <div class="presets-row" role="group" aria-label="Quick folder presets">
+                    <span class="preset-label" id="presets-label">Quick select:</span>
+                    <button type="button" class="preset-pill active" data-path="/home/yash/Downloads" aria-pressed="true">Downloads</button>
+                    <button type="button" class="preset-pill" data-path="/home/yash/Videos" aria-pressed="false">Videos</button>
+                    <button type="button" class="preset-pill" data-path="/home/yash/Music" aria-pressed="false">Music</button>
                 </div>
             </div>
 
-            <!-- Inspection Status -->
-            <div id="inspect-state" class="state-row hidden">
-                <div class="indicator-dot"></div>
+            <!-- Inspection Status (Polite Live Region) -->
+            <div id="inspect-state" class="state-row hidden" role="status" aria-live="polite">
+                <div class="indicator-dot" aria-hidden="true"></div>
                 <span id="inspect-text">Inspecting media streams...</span>
             </div>
 
-            <!-- Error Banner -->
-            <div id="error-banner" class="alert-box hidden"></div>
+            <!-- Error Banner (Assertive Live Region) -->
+            <div id="error-banner" class="alert-box hidden" role="alert" aria-live="assertive"></div>
 
             <!-- Media Preview -->
-            <div id="media-preview" class="media-box hidden">
-                <img id="media-thumb" class="media-img" src="" alt="Media thumbnail">
+            <div id="media-preview" class="media-box hidden" aria-live="polite">
+                <img id="media-thumb" class="media-img" src="" alt="" aria-hidden="true">
                 <div class="media-info">
-                    <div id="media-title" class="media-title"></div>
+                    <div id="media-title" class="media-title" role="heading" aria-level="2"></div>
                     <div class="media-sub">
                         <span id="media-channel"></span>
                         <span id="media-duration" class="pill-stat"></span>
@@ -87,10 +91,10 @@
             <div id="config-section" class="config-grid hidden">
                 <!-- Stream Scope: Single vs Playlist -->
                 <div class="scope-row">
-                    <div class="field-label">Download Scope</div>
-                    <div class="segmented-control">
-                        <button type="button" id="scope-single-btn" class="seg-btn active">Single Video</button>
-                        <button type="button" id="scope-playlist-btn" class="seg-btn">Entire Playlist</button>
+                    <span id="scope-label" class="field-label">Download Scope</span>
+                    <div class="segmented-control" role="radiogroup" aria-labelledby="scope-label">
+                        <button type="button" id="scope-single-btn" class="seg-btn active" role="radio" aria-checked="true">Single Video</button>
+                        <button type="button" id="scope-playlist-btn" class="seg-btn" role="radio" aria-checked="false">Entire Playlist</button>
                     </div>
                 </div>
 
@@ -102,16 +106,17 @@
                         id="playlist-range-input" 
                         class="text-input" 
                         placeholder="e.g. 1-10, 5, or leave blank for all"
+                        aria-describedby="playlist-range-note"
                     >
-                    <span class="field-note">Leave empty to download every item in the playlist.</span>
+                    <span id="playlist-range-note" class="field-note">Leave empty to download every item in the playlist.</span>
                 </div>
 
                 <!-- Media Format Mode: Video vs Audio -->
                 <div class="scope-row">
-                    <div class="field-label">Media Type</div>
-                    <div class="segmented-control">
-                        <button type="button" id="mode-video-btn" class="seg-btn active">Video</button>
-                        <button type="button" id="mode-audio-btn" class="seg-btn">Audio Only</button>
+                    <span id="mode-label" class="field-label">Media Type</span>
+                    <div class="segmented-control" role="radiogroup" aria-labelledby="mode-label">
+                        <button type="button" id="mode-video-btn" class="seg-btn active" role="radio" aria-checked="true">Video</button>
+                        <button type="button" id="mode-audio-btn" class="seg-btn" role="radio" aria-checked="false">Audio Only</button>
                     </div>
                 </div>
 
@@ -125,18 +130,19 @@
 
                 <!-- YouTube Premium / Cookie File Option -->
                 <div class="accordion">
-                    <button type="button" id="auth-toggle" class="accordion-header">
+                    <button type="button" id="auth-toggle" class="accordion-header" aria-expanded="false" aria-controls="auth-content">
                         Authentication (Cookies)
                     </button>
-                    <div id="auth-content" class="accordion-body hidden">
+                    <div id="auth-content" class="accordion-body hidden" role="region" aria-labelledby="auth-toggle">
                         <label for="cookies-path-input" class="field-label">Netscape Cookie File</label>
                         <input 
                             type="text" 
                             id="cookies-path-input" 
                             class="text-input text-mono" 
                             placeholder="/home/yash/cookies.txt"
+                            aria-describedby="cookies-hint"
                         >
-                        <span class="field-note">Enables YouTube Premium 1080p enhanced bitrate and member-only videos.</span>
+                        <span id="cookies-hint" class="field-note">Enables YouTube Premium 1080p enhanced bitrate and member-only videos.</span>
                     </div>
                 </div>
 
@@ -145,15 +151,15 @@
             </div>
 
             <!-- Active Download Progress -->
-            <div id="progress-card" class="progress-panel hidden">
+            <div id="progress-card" class="progress-panel hidden" role="region" aria-label="Download Progress">
                 <div class="progress-meta">
-                    <span id="progress-state" class="state-title">Starting download...</span>
+                    <span id="progress-state" class="state-title" role="status" aria-live="polite">Starting download...</span>
                     <span id="progress-num" class="state-pct">0%</span>
                 </div>
-                <div class="progress-track">
+                <div id="progress-track" class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Download progress percentage">
                     <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                 </div>
-                <div class="progress-stats">
+                <div class="progress-stats" aria-hidden="true">
                     <span id="progress-speed">Speed: --</span>
                     <span id="progress-eta">ETA: --</span>
                 </div>
@@ -161,12 +167,12 @@
         </main>
 
         <!-- Download History -->
-        <section class="history-panel">
+        <section class="history-panel" aria-labelledby="history-heading">
             <div class="history-bar">
-                <span class="section-title">Recent Downloads in Selected Folder</span>
+                <h2 id="history-heading" class="section-title">Recent Downloads in Selected Folder</h2>
                 <button id="refresh-btn" class="subtle-btn" type="button">Refresh</button>
             </div>
-            <div id="files-list" class="files-container">
+            <div id="files-list" class="files-container" role="feed" aria-busy="false">
                 <div class="empty-notice">No files downloaded in this folder yet.</div>
             </div>
         </section>

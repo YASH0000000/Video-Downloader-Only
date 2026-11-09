@@ -16,6 +16,7 @@
     --accent-btn: #27272a;
     --accent-btn-hover: #3f3f46;
 
+    --focus-ring: #38bdf8;
     --status-active: #38bdf8;
     --status-success: #4ade80;
     --status-error: #f87171;
@@ -32,6 +33,25 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+/* Accessible Focus Indicators (WCAG 2.4.7 AA / 2.4.11 AA / 2.4.13 AAA) */
+*:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* Screen Reader Only Utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 body {
@@ -83,11 +103,12 @@ body {
     background: transparent;
     color: var(--fg-secondary);
     border: 1px solid var(--border);
-    padding: 0.4rem 0.8rem;
+    padding: 0.5rem 0.9rem;
     border-radius: var(--radius-sm);
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
+    min-height: 36px;
     transition: all 0.15s ease;
 }
 
@@ -141,7 +162,7 @@ body {
     padding: 0.65rem 0.85rem;
     color: var(--fg-main);
     font-size: 0.9rem;
-    outline: none;
+    min-height: 40px;
     transition: border-color 0.15s ease;
 }
 
@@ -150,8 +171,8 @@ body {
     font-size: 0.85rem;
 }
 
-.text-input:focus, .select-input:focus {
-    border-color: var(--border-active);
+.text-input:focus-visible, .select-input:focus-visible {
+    border-color: var(--focus-ring);
 }
 
 .action-btn {
@@ -162,6 +183,7 @@ body {
     border-radius: var(--radius-sm);
     font-weight: 600;
     font-size: 0.85rem;
+    min-height: 40px;
     cursor: pointer;
     white-space: nowrap;
     transition: opacity 0.15s ease;
@@ -178,6 +200,7 @@ body {
     border-radius: var(--radius-sm);
     padding: 0.4rem 0.8rem;
     font-size: 0.75rem;
+    min-height: 32px;
     cursor: pointer;
 }
 
@@ -194,6 +217,7 @@ body {
     padding: 0.65rem 0.95rem;
     font-size: 0.85rem;
     font-weight: 500;
+    min-height: 40px;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.15s ease;
@@ -227,6 +251,10 @@ body {
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 2px;
+    padding: 0.3rem 0.4rem;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .text-link-btn:hover {
@@ -237,7 +265,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
 }
 
 .preset-label {
@@ -251,8 +279,9 @@ body {
     border: 1px solid var(--border);
     color: var(--fg-secondary);
     font-size: 0.75rem;
-    padding: 0.25rem 0.65rem;
+    padding: 0.35rem 0.75rem;
     border-radius: var(--radius-sm);
+    min-height: 30px;
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -282,11 +311,12 @@ body {
 
 .seg-btn {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--fg-muted);
     font-size: 0.85rem;
     font-weight: 500;
-    padding: 0.5rem;
+    padding: 0.55rem;
+    min-height: 38px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.15s ease;
@@ -295,7 +325,7 @@ body {
 .seg-btn.active {
     background: var(--bg-subtle);
     color: var(--fg-main);
-    border: 1px solid var(--border);
+    border-color: var(--border);
 }
 
 /* Scope & Config Rows */
@@ -417,6 +447,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    padding: 0.3rem 0;
+    min-height: 32px;
 }
 
 .accordion-header:hover {
@@ -440,6 +472,7 @@ body {
     border-radius: var(--radius-sm);
     font-weight: 600;
     font-size: 0.95rem;
+    min-height: 44px;
     cursor: pointer;
     transition: opacity 0.15s ease;
 }
@@ -488,7 +521,7 @@ body {
 
 .progress-track {
     width: 100%;
-    height: 4px;
+    height: 6px;
     background: var(--bg-input);
     border-radius: 9999px;
     overflow: hidden;
@@ -536,6 +569,7 @@ body {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
+    min-height: 40px;
 }
 
 .file-name {
@@ -565,4 +599,18 @@ body {
 
 .hidden {
     display: none !important;
+}
+
+/* Honor prefers-reduced-motion (WCAG 2.2.2 / 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .indicator-dot {
+        animation: none;
+        opacity: 0.9;
+    }
 }

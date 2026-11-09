@@ -42,6 +42,7 @@ const downloadBtn = document.getElementById("download-btn");
 const progressCard = document.getElementById("progress-card");
 const progressState = document.getElementById("progress-state");
 const progressNum = document.getElementById("progress-num");
+const progressTrack = document.getElementById("progress-track");
 const progressFill = document.getElementById("progress-fill");
 const progressSpeed = document.getElementById("progress-speed");
 const progressEta = document.getElementById("progress-eta");
@@ -52,11 +53,13 @@ const refreshBtn = document.getElementById("refresh-btn");
 function showError(msg) {
     errorBanner.textContent = msg;
     errorBanner.classList.remove("hidden");
+    urlInput.setAttribute("aria-invalid", "true");
 }
 
 function clearError() {
     errorBanner.textContent = "";
     errorBanner.classList.add("hidden");
+    urlInput.removeAttribute("aria-invalid");
 }
 
 function setSaveDirectory(dir) {
@@ -65,10 +68,13 @@ function setSaveDirectory(dir) {
     localStorage.setItem("vget_save_dir", dir);
 
     presetPills.forEach(pill => {
-        if (pill.getAttribute("data-path") === dir) {
+        const isMatch = pill.getAttribute("data-path") === dir;
+        if (isMatch) {
             pill.classList.add("active");
+            pill.setAttribute("aria-pressed", "true");
         } else {
             pill.classList.remove("active");
+            pill.setAttribute("aria-pressed", "false");
         }
     });
 
@@ -79,11 +85,15 @@ function setScope(scope) {
     currentScope = scope;
     if (scope === "single") {
         scopeSingleBtn.classList.add("active");
+        scopeSingleBtn.setAttribute("aria-checked", "true");
         scopePlaylistBtn.classList.remove("active");
+        scopePlaylistBtn.setAttribute("aria-checked", "false");
         playlistRangeField.classList.add("hidden");
     } else {
         scopePlaylistBtn.classList.add("active");
+        scopePlaylistBtn.setAttribute("aria-checked", "true");
         scopeSingleBtn.classList.remove("active");
+        scopeSingleBtn.setAttribute("aria-checked", "false");
         playlistRangeField.classList.remove("hidden");
     }
 }
@@ -92,12 +102,16 @@ function setMode(mode) {
     currentMode = mode;
     if (mode === "video") {
         modeVideoBtn.classList.add("active");
+        modeVideoBtn.setAttribute("aria-checked", "true");
         modeAudioBtn.classList.remove("active");
+        modeAudioBtn.setAttribute("aria-checked", "false");
         variantLabel.textContent = "Target Resolution";
         populateVariants(currentMediaData?.video_formats || []);
     } else {
         modeAudioBtn.classList.add("active");
+        modeAudioBtn.setAttribute("aria-checked", "true");
         modeVideoBtn.classList.remove("active");
+        modeVideoBtn.setAttribute("aria-checked", "false");
         variantLabel.textContent = "Target Audio Quality";
         populateVariants(currentMediaData?.audio_formats || []);
     }
@@ -265,6 +279,9 @@ function updateProgress(data) {
     const pct = Math.min(100, Math.max(0, data.percent || 0));
     progressFill.style.width = `${pct}%`;
     progressNum.textContent = `${pct}%`;
+    if (progressTrack) {
+        progressTrack.setAttribute("aria-valuenow", String(Math.round(pct)));
+    }
 
     if (data.status === "downloading") {
         progressState.textContent = data.filename ? `Downloading ${data.filename}` : "Downloading media chunks...";
@@ -375,6 +392,8 @@ saveDirInput.addEventListener("change", () => {
 });
 
 authToggle.addEventListener("click", () => {
+    const isExpanded = authToggle.getAttribute("aria-expanded") === "true";
+    authToggle.setAttribute("aria-expanded", String(!isExpanded));
     authContent.classList.toggle("hidden");
 });
 
