@@ -7,127 +7,159 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <div class="logo-area">
-                <div class="logo-icon">▼</div>
-                <div class="logo-text">
-                    <h1>Media Downloader</h1>
-                    <span class="badge">Multi-Platform</span>
-                </div>
+    <div class="shell">
+        <!-- Minimal Top Bar -->
+        <header class="topbar">
+            <div class="brand">
+                <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12m0 0l4-4m-4 4l-4-4"/>
+                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                </svg>
+                <span class="brand-title">vget</span>
             </div>
-            <button id="open-folder-btn" class="btn-secondary" title="Open Downloads Folder">
-                <span class="icon">📁</span> Open Folder
-            </button>
+            <button id="open-folder-btn" class="nav-btn" type="button">Open Folder</button>
         </header>
 
-        <main class="main-card">
-            <div class="input-group">
-                <label for="url-input">Video or Playlist URL</label>
-                <div class="input-wrapper">
+        <!-- Main Card -->
+        <main class="panel">
+            <!-- URL Input Section -->
+            <div class="field-block">
+                <label for="url-input" class="field-label">Media URL</label>
+                <div class="input-row">
                     <input 
                         type="url" 
                         id="url-input" 
-                        placeholder="Paste YouTube, TikTok, Vimeo, Twitter, or any video link..." 
-                        autocomplete="off"
+                        class="text-input" 
+                        placeholder="Paste video or playlist link..." 
+                        autocomplete="off" 
                         spellcheck="false"
                     >
-                    <button id="inspect-btn" class="btn-primary">Inspect</button>
+                    <button id="inspect-btn" class="action-btn" type="button">Inspect</button>
                 </div>
             </div>
 
-            <!-- Loading Spinner for Inspection -->
-            <div id="inspect-loading" class="loading-state hidden">
-                <div class="spinner"></div>
-                <span>Analyzing media streams & formats...</span>
+            <!-- Inspection Status -->
+            <div id="inspect-state" class="state-row hidden">
+                <div class="indicator-dot"></div>
+                <span id="inspect-text">Inspecting media streams...</span>
             </div>
 
             <!-- Error Banner -->
-            <div id="error-banner" class="alert-banner hidden"></div>
+            <div id="error-banner" class="alert-box hidden"></div>
 
-            <!-- Media Preview Card -->
-            <div id="media-preview" class="media-card hidden">
-                <img id="media-thumb" class="media-thumb" src="" alt="Thumbnail">
-                <div class="media-details">
-                    <h3 id="media-title">Video Title</h3>
-                    <div class="media-meta">
-                        <span id="media-author" class="meta-item"></span>
-                        <span id="media-duration" class="meta-item"></span>
-                        <span id="media-playlist-tag" class="meta-item tag hidden">Playlist</span>
+            <!-- Media Preview -->
+            <div id="media-preview" class="media-box hidden">
+                <img id="media-thumb" class="media-img" src="" alt="Media thumbnail">
+                <div class="media-info">
+                    <div id="media-title" class="media-title"></div>
+                    <div class="media-sub">
+                        <span id="media-channel"></span>
+                        <span id="media-duration" class="pill-stat"></span>
+                        <span id="media-badge" class="pill-badge hidden"></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Format Selector Controls -->
-            <div id="format-controls" class="controls-panel hidden">
-                <div class="mode-toggle-group">
-                    <button type="button" id="mode-video" class="mode-btn active">
-                        <span class="icon">🎬</span> Video
-                    </button>
-                    <button type="button" id="mode-audio" class="mode-btn">
-                        <span class="icon">🎵</span> Audio
-                    </button>
-                </div>
-
-                <div class="options-grid">
-                    <div class="option-field">
-                        <label id="variant-label" for="variant-select">Select Resolution</label>
-                        <select id="variant-select" class="custom-select">
-                            <option value="best">Best Available Quality</option>
-                        </select>
-                    </div>
-
-                    <div id="playlist-option-container" class="option-field checkbox-field hidden">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="playlist-checkbox">
-                            <span>Download All Videos in Playlist</span>
-                        </label>
+            <!-- Configuration Section -->
+            <div id="config-section" class="config-grid hidden">
+                <!-- Stream Scope: Single vs Playlist -->
+                <div class="scope-row">
+                    <div class="field-label">Download Scope</div>
+                    <div class="segmented-control">
+                        <button type="button" id="scope-single-btn" class="seg-btn active">Single Video</button>
+                        <button type="button" id="scope-playlist-btn" class="seg-btn">Entire Playlist</button>
                     </div>
                 </div>
 
-                <!-- Advanced Options Toggle -->
-                <div class="advanced-section">
-                    <button type="button" id="advanced-toggle" class="toggle-link">
-                        <span>▶</span> Advanced (Cookies & Premium)
-                    </button>
-                    <div id="advanced-content" class="advanced-box hidden">
-                        <label for="cookies-path">Cookie File Path (Optional for YouTube Premium)</label>
-                        <input type="text" id="cookies-path" placeholder="e.g. /home/yash/cookies.txt">
-                        <p class="field-hint">Used for 1080p Premium enhanced bitrate and member-only videos.</p>
+                <!-- Playlist Range Input (Only when Playlist is selected) -->
+                <div id="playlist-range-field" class="field-block hidden">
+                    <label for="playlist-range-input" class="field-label">Playlist Item Range (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="playlist-range-input" 
+                        class="text-input" 
+                        placeholder="e.g. 1-10, 5, or leave blank for all"
+                    >
+                    <span class="field-note">Leave empty to download every item in the playlist.</span>
+                </div>
+
+                <!-- Media Format Mode: Video vs Audio -->
+                <div class="scope-row">
+                    <div class="field-label">Media Type</div>
+                    <div class="segmented-control">
+                        <button type="button" id="mode-video-btn" class="seg-btn active">Video</button>
+                        <button type="button" id="mode-audio-btn" class="seg-btn">Audio Only</button>
                     </div>
                 </div>
 
-                <div class="action-row">
-                    <button id="download-btn" class="btn-download">
-                        Start Download
-                    </button>
+                <!-- Dynamic Format / Quality Selector -->
+                <div class="field-block">
+                    <label id="variant-label" for="variant-select" class="field-label">Target Resolution</label>
+                    <select id="variant-select" class="select-input">
+                        <option value="best">Best Available (Auto)</option>
+                    </select>
                 </div>
+
+                <!-- Save Destination Folder -->
+                <div class="field-block">
+                    <label for="save-dir-input" class="field-label">Save Location</label>
+                    <div class="input-row">
+                        <input 
+                            type="text" 
+                            id="save-dir-input" 
+                            class="text-input text-mono" 
+                            placeholder="/home/yash/Downloads"
+                        >
+                        <button id="reset-path-btn" class="subtle-btn" type="button" title="Reset to default">Reset</button>
+                    </div>
+                    <span class="field-note">Folder will be created automatically if it does not exist.</span>
+                </div>
+
+                <!-- YouTube Premium / Cookie File Option -->
+                <div class="accordion">
+                    <button type="button" id="auth-toggle" class="accordion-header">
+                        Authentication (Cookies)
+                    </button>
+                    <div id="auth-content" class="accordion-body hidden">
+                        <label for="cookies-path-input" class="field-label">Netscape Cookie File</label>
+                        <input 
+                            type="text" 
+                            id="cookies-path-input" 
+                            class="text-input text-mono" 
+                            placeholder="/home/yash/cookies.txt"
+                        >
+                        <span class="field-note">Enables YouTube Premium 1080p enhanced bitrate and member-only videos.</span>
+                    </div>
+                </div>
+
+                <!-- Download Action Button -->
+                <button id="download-btn" class="submit-btn" type="button">Start Download</button>
             </div>
 
             <!-- Active Download Progress -->
-            <div id="progress-container" class="progress-box hidden">
-                <div class="progress-header">
-                    <span id="progress-status" class="status-label">Downloading...</span>
-                    <span id="progress-percent" class="percent-label">0%</span>
+            <div id="progress-card" class="progress-panel hidden">
+                <div class="progress-meta">
+                    <span id="progress-state" class="state-title">Starting download...</span>
+                    <span id="progress-num" class="state-pct">0%</span>
                 </div>
-                <div class="progress-bar-track">
-                    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                <div class="progress-track">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
                 </div>
-                <div class="progress-footer">
-                    <span id="progress-speed" class="meta-sub">Speed: --</span>
-                    <span id="progress-eta" class="meta-sub">ETA: --</span>
+                <div class="progress-stats">
+                    <span id="progress-speed">Speed: --</span>
+                    <span id="progress-eta">ETA: --</span>
                 </div>
             </div>
         </main>
 
-        <!-- Completed Downloads List -->
-        <section class="history-section">
-            <div class="history-header">
-                <h2>Downloaded Files</h2>
-                <button id="refresh-history-btn" class="btn-ghost">Refresh</button>
+        <!-- Download History -->
+        <section class="history-panel">
+            <div class="history-bar">
+                <span class="section-title">Recent Downloads</span>
+                <button id="refresh-btn" class="subtle-btn" type="button">Refresh</button>
             </div>
-            <div id="downloads-list" class="downloads-list">
-                <div class="empty-state">No downloads yet. Downloaded files will appear here.</div>
+            <div id="files-list" class="files-container">
+                <div class="empty-notice">No files downloaded yet.</div>
             </div>
         </section>
     </div>

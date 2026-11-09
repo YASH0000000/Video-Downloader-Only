@@ -1,42 +1,50 @@
 let currentMediaData = null;
 let currentMode = "video"; // "video" | "audio"
+let currentScope = "single"; // "single" | "playlist"
 let activeJobId = null;
 let pollInterval = null;
 
 const urlInput = document.getElementById("url-input");
 const inspectBtn = document.getElementById("inspect-btn");
-const inspectLoading = document.getElementById("inspect-loading");
+const inspectState = document.getElementById("inspect-state");
+const inspectText = document.getElementById("inspect-text");
 const errorBanner = document.getElementById("error-banner");
 
 const mediaPreview = document.getElementById("media-preview");
 const mediaThumb = document.getElementById("media-thumb");
 const mediaTitle = document.getElementById("media-title");
-const mediaAuthor = document.getElementById("media-author");
+const mediaChannel = document.getElementById("media-channel");
 const mediaDuration = document.getElementById("media-duration");
-const mediaPlaylistTag = document.getElementById("media-playlist-tag");
+const mediaBadge = document.getElementById("media-badge");
 
-const formatControls = document.getElementById("format-controls");
-const modeVideoBtn = document.getElementById("mode-video");
-const modeAudioBtn = document.getElementById("mode-audio");
+const configSection = document.getElementById("config-section");
+const scopeSingleBtn = document.getElementById("scope-single-btn");
+const scopePlaylistBtn = document.getElementById("scope-playlist-btn");
+const playlistRangeField = document.getElementById("playlist-range-field");
+const playlistRangeInput = document.getElementById("playlist-range-input");
+
+const modeVideoBtn = document.getElementById("mode-video-btn");
+const modeAudioBtn = document.getElementById("mode-audio-btn");
 const variantLabel = document.getElementById("variant-label");
 const variantSelect = document.getElementById("variant-select");
-const playlistContainer = document.getElementById("playlist-option-container");
-const playlistCheckbox = document.getElementById("playlist-checkbox");
 
-const advancedToggle = document.getElementById("advanced-toggle");
-const advancedContent = document.getElementById("advanced-content");
-const cookiesPathInput = document.getElementById("cookies-path");
+const saveDirInput = document.getElementById("save-dir-input");
+const resetPathBtn = document.getElementById("reset-path-btn");
+
+const authToggle = document.getElementById("auth-toggle");
+const authContent = document.getElementById("auth-content");
+const cookiesPathInput = document.getElementById("cookies-path-input");
 
 const downloadBtn = document.getElementById("download-btn");
-const progressContainer = document.getElementById("progress-container");
-const progressStatus = document.getElementById("progress-status");
-const progressPercent = document.getElementById("progress-percent");
-const progressBarFill = document.getElementById("progress-bar-fill");
+const progressCard = document.getElementById("progress-card");
+const progressState = document.getElementById("progress-state");
+const progressNum = document.getElementById("progress-num");
+const progressFill = document.getElementById("progress-fill");
 const progressSpeed = document.getElementById("progress-speed");
 const progressEta = document.getElementById("progress-eta");
 
-const downloadsList = document.getElementById("downloads-list");
-const refreshHistoryBtn = document.getElementById("refresh-history-btn");
+const filesList = document.getElementById("files-list");
+const refreshBtn = document.getElementById("refresh-btn");
 const openFolderBtn = document.getElementById("open-folder-btn");
 
 function showError(msg) {
@@ -49,17 +57,30 @@ function clearError() {
     errorBanner.classList.add("hidden");
 }
 
+function setScope(scope) {
+    currentScope = scope;
+    if (scope === "single") {
+        scopeSingleBtn.classList.add("active");
+        scopePlaylistBtn.classList.remove("active");
+        playlistRangeField.classList.add("hidden");
+    } else {
+        scopePlaylistBtn.classList.add("active");
+        scopeSingleBtn.classList.remove("active");
+        playlistRangeField.classList.remove("hidden");
+    }
+}
+
 function setMode(mode) {
     currentMode = mode;
     if (mode === "video") {
         modeVideoBtn.classList.add("active");
         modeAudioBtn.classList.remove("active");
-        variantLabel.textContent = "Select Video Resolution";
+        variantLabel.textContent = "Target Resolution";
         populateVariants(currentMediaData?.video_formats || []);
     } else {
         modeAudioBtn.classList.add("active");
         modeVideoBtn.classList.remove("active");
-        variantLabel.textContent = "Select Audio Variant";
+        variantLabel.textContent = "Target Audio Quality";
         populateVariants(currentMediaData?.audio_formats || []);
     }
 }
@@ -84,14 +105,14 @@ function populateVariants(options) {
 async function inspectUrl() {
     const url = urlInput.value.trim();
     if (!url) {
-        showError("Please paste or type a valid media link first.");
+        showError("Paste a valid media link first.");
         return;
     }
 
     clearError();
-    inspectLoading.classList.remove("hidden");
+    inspectState.classList.remove("hidden");
     mediaPreview.classList.add("hidden");
-    formatControls.classList.add("hidden");
+    configSection.classList.add("hidden");
     inspectBtn.disabled = true;
 
     try {
@@ -106,25 +127,26 @@ async function inspectUrl() {
 
         const json = await res.json();
         if (!res.ok) {
-            throw new Error(json.detail || "Failed to inspect media URL");
+            throw new Error(json.detail || "Failed to inspect URL");
         }
 
         currentMediaData = json.data;
-        renderMediaPreview(currentMediaData);
+        renderMediaData(currentMediaData);
         setMode(currentMode);
-        formatControls.classList.remove("hidden");
+        configSection.classList.remove("hidden");
     } catch (err) {
         showError(err.message);
     } finally {
-        inspectLoading.classList.add("hidden");
+        inspectState.classList.add("hidden");
         inspectBtn.disabled = false;
     }
 }
 
-function renderMediaPreview(data) {
+function renderMediaData(data) {
     mediaTitle.textContent = data.title;
-    mediaAuthor.textContent = data.channel || "";
-    mediaDuration.textContent = data.duration ? `⏱ ${data.duration}` : "";
+    mediaChannel.textContent = data.author || "";
+    mediaDuration.textContent = data.duration || "";
+    
     if (data.thumbnail) {
         mediaThumb.src = data.thumbnail;
         mediaThumb.classList.remove("hidden");
@@ -132,15 +154,18 @@ function renderMediaPreview(data) {
         mediaThumb.classList.add("hidden");
     }
 
+    if (data.default_save_path && !saveDirInput.value.trim()) {
+        saveDirInput.value = data.default_save_path;
+    }
+
     if (data.is_playlist) {
-        mediaPlaylistTag.textContent = `Playlist (${data.playlist_count} videos)`;
-        mediaPlaylistTag.classList.remove("hidden");
-        playlistContainer.classList.remove("hidden");
-        playlistCheckbox.checked = true;
+        const count = data.playlist_count > 0 ? `Playlist (${data.playlist_count})` : "Playlist";
+        mediaBadge.textContent = count;
+        mediaBadge.classList.remove("hidden");
+        setScope("playlist");
     } else {
-        mediaPlaylistTag.classList.add("hidden");
-        playlistContainer.classList.add("hidden");
-        playlistCheckbox.checked = false;
+        mediaBadge.classList.add("hidden");
+        setScope("single");
     }
 
     mediaPreview.classList.remove("hidden");
@@ -152,15 +177,17 @@ async function startDownload() {
 
     clearError();
     downloadBtn.disabled = true;
-    downloadBtn.textContent = "Initializing...";
-    progressContainer.classList.remove("hidden");
+    downloadBtn.textContent = "Connecting to streams...";
+    progressCard.classList.remove("hidden");
 
     try {
         const payload = {
             url: url,
             mode: currentMode,
             quality: variantSelect.value,
-            is_playlist: playlistCheckbox.checked,
+            download_type: currentScope,
+            playlist_range: playlistRangeInput.value.trim() || null,
+            output_dir: saveDirInput.value.trim() || null,
             cookies_path: cookiesPathInput.value.trim() || null,
         };
 
@@ -172,20 +199,20 @@ async function startDownload() {
 
         const json = await res.json();
         if (!res.ok) {
-            throw new Error(json.detail || "Failed to start download job");
+            throw new Error(json.detail || "Failed to dispatch download");
         }
 
         activeJobId = json.job_id;
-        startPollingProgress();
+        startPolling();
     } catch (err) {
         showError(err.message);
         downloadBtn.disabled = false;
         downloadBtn.textContent = "Start Download";
-        progressContainer.classList.add("hidden");
+        progressCard.classList.add("hidden");
     }
 }
 
-function startPollingProgress() {
+function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(async () => {
         if (!activeJobId) return;
@@ -195,20 +222,20 @@ function startPollingProgress() {
             if (!res.ok) return;
             const data = await res.json();
 
-            updateProgressUI(data);
+            updateProgress(data);
 
             if (data.status === "completed") {
                 clearInterval(pollInterval);
                 pollInterval = null;
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = "Download Another";
-                loadDownloads();
+                loadRecentFiles();
             } else if (data.status === "error") {
                 clearInterval(pollInterval);
                 pollInterval = null;
                 downloadBtn.disabled = false;
                 downloadBtn.textContent = "Retry Download";
-                showError("Download failed: " + (data.error || "Unknown error"));
+                showError(data.error || "Download encountered an error");
             }
         } catch (e) {
             console.error("Progress poll error:", e);
@@ -216,80 +243,95 @@ function startPollingProgress() {
     }, 500);
 }
 
-function updateProgressUI(data) {
-    const percent = Math.min(100, Math.max(0, data.percent || 0));
-    progressBarFill.style.width = `${percent}%`;
-    progressPercent.textContent = `${percent}%`;
+function updateProgress(data) {
+    const pct = Math.min(100, Math.max(0, data.percent || 0));
+    progressFill.style.width = `${pct}%`;
+    progressNum.textContent = `${pct}%`;
 
     if (data.status === "downloading") {
-        progressStatus.textContent = `Downloading ${data.filename || ""}...`;
+        progressState.textContent = data.filename ? `Downloading ${data.filename}` : "Downloading media chunks...";
         progressSpeed.textContent = `Speed: ${data.speed || "--"}`;
         progressEta.textContent = `ETA: ${data.eta || "--"}`;
     } else if (data.status === "muxing") {
-        progressStatus.textContent = "Muxing & finalizing with FFmpeg...";
+        progressState.textContent = "Muxing and tagging output (FFmpeg)...";
         progressSpeed.textContent = "Speed: Max";
-        progressEta.textContent = "Almost ready...";
+        progressEta.textContent = "Almost complete";
     } else if (data.status === "completed") {
-        progressStatus.textContent = "Completed Successfully!";
-        progressSpeed.textContent = "Finished";
-        progressEta.textContent = "Saved to downloads";
+        progressState.textContent = "Complete. Saved to disk.";
+        progressSpeed.textContent = "Speed: --";
+        progressEta.textContent = "Finished";
     } else if (data.status === "starting") {
-        progressStatus.textContent = "Allocating streams...";
+        progressState.textContent = "Allocating streams...";
     }
 }
 
-async function loadDownloads() {
+async function loadRecentFiles() {
+    const dir = saveDirInput.value.trim() || null;
+    const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
     try {
-        const res = await fetch("/api/downloads");
+        const res = await fetch(`/api/downloads${query}`);
         if (!res.ok) return;
         const data = await res.json();
 
+        if (data.downloads_dir && !saveDirInput.value.trim()) {
+            saveDirInput.value = data.downloads_dir;
+        }
+
         if (!data.files || data.files.length === 0) {
-            downloadsList.innerHTML = `<div class="empty-state">No downloads yet. Downloaded files will appear here.</div>`;
+            filesList.innerHTML = `<div class="empty-notice">No files downloaded in this folder yet.</div>`;
             return;
         }
 
-        downloadsList.innerHTML = "";
+        filesList.innerHTML = "";
         data.files.forEach(f => {
-            const item = document.createElement("div");
-            item.className = "download-item";
-            item.innerHTML = `
-                <div class="file-info">
-                    <span class="file-icon">${f.name.endsWith(".mp3") || f.name.endsWith(".m4a") || f.name.endsWith(".flac") ? "🎵" : "🎬"}</span>
-                    <span class="file-name" title="${f.name}">${f.name}</span>
-                </div>
+            const row = document.createElement("div");
+            row.className = "file-row";
+            row.innerHTML = `
+                <span class="file-name" title="${f.name}">${f.name}</span>
                 <span class="file-size">${f.size_mb} MB</span>
             `;
-            downloadsList.appendChild(item);
+            filesList.appendChild(row);
         });
     } catch (err) {
-        console.error("Failed to load downloads:", err);
+        console.error("Failed to load files:", err);
     }
 }
 
-async function openDownloadsFolder() {
+async function openSaveDirectory() {
+    const targetPath = saveDirInput.value.trim() || null;
     try {
-        await fetch("/api/open-downloads", { method: "POST" });
+        await fetch("/api/open-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: targetPath }),
+        });
     } catch (err) {
-        console.error("Failed to open folder:", err);
+        console.error("Failed to open directory:", err);
     }
 }
 
-// Event Listeners
+// Event bindings
+scopeSingleBtn.addEventListener("click", () => setScope("single"));
+scopePlaylistBtn.addEventListener("click", () => setScope("playlist"));
 modeVideoBtn.addEventListener("click", () => setMode("video"));
 modeAudioBtn.addEventListener("click", () => setMode("audio"));
+
 inspectBtn.addEventListener("click", inspectUrl);
 downloadBtn.addEventListener("click", startDownload);
-refreshHistoryBtn.addEventListener("click", loadDownloads);
-openFolderBtn.addEventListener("click", openDownloadsFolder);
+refreshBtn.addEventListener("click", loadRecentFiles);
+openFolderBtn.addEventListener("click", openSaveDirectory);
 
-advancedToggle.addEventListener("click", () => {
-    advancedContent.classList.toggle("hidden");
-    const arrow = advancedToggle.querySelector("span");
-    arrow.textContent = advancedContent.classList.contains("hidden") ? "▶" : "▼";
+resetPathBtn.addEventListener("click", () => {
+    if (currentMediaData?.default_save_path) {
+        saveDirInput.value = currentMediaData.default_save_path;
+        loadRecentFiles();
+    }
 });
 
-// Auto-inspect on paste or Enter key
+authToggle.addEventListener("click", () => {
+    authContent.classList.toggle("hidden");
+});
+
 urlInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -307,5 +349,5 @@ urlInput.addEventListener("paste", () => {
     }, 150);
 });
 
-// Initial load
-loadDownloads();
+// Initial boot
+loadRecentFiles();

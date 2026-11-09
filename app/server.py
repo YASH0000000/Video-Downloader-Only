@@ -5,15 +5,15 @@ import threading
 import uuid
 from typing import Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .downloader import inspect_url, download_media, DOWNLOADS_DIR
+from .downloader import inspect_url, download_media, resolve_downloads_dir
 
-app = FastAPI(title="VideoDownloader", version="1.0.0")
+app = FastAPI(title="Media Downloader", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,10 +38,16 @@ class InspectRequest(BaseModel):
 
 class DownloadRequest(BaseModel):
     url: str
-    mode: str
-    quality: str
-    is_playlist: bool = False
+    mode: str = "video"  # "video" | "audio"
+    quality: str = "best"
+    download_type: str = "single"  # "single" | "playlist"
+    playlist_range: Optional[str] = None
+    output_dir: Optional[str] = None
     cookies_path: Optional[str] = None
+
+
+class OpenFolderRequest(BaseModel):
+    path: Optional[str] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -49,7 +55,7 @@ async def serve_index():
     index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    return HTMLResponse("<h1>Video Downloader UI Loading...</h1>")
+    return HTMLResponse("<h1>Media Downloader Loading...</h1>")
 
 
 @app.post("/api/inspect")
@@ -73,7 +79,7 @@ def run_download_job(job_id: str, req: DownloadRequest):
     try:
         with jobs_lock:
             jobs[job_id]["status"] = "starting"
-            jobs[job_id]["percent"] = 5.0
+            jobs[job_id]["percent"] = 2.0
             jobs[job_id]["speed"] = "Connecting..."
             jobs[job_id]["eta"] = "..."
 
@@ -81,7 +87,9 @@ def run_download_job(job_id: str, req: DownloadRequest):
             url=req.url.strip(),
             mode=req.mode,
             quality=req.quality,
-            is_playlist=req.is_playlist,
+            download_type=req.download_type,
+            playlist_range=req.playlist_range,
+            output_dir=req.output_dir,
             cookies_path=req.cookies_path,
             progress_callback=update_progress,
         )
@@ -95,13 +103,16 @@ def run_download_job(job_id: str, req: DownloadRequest):
 @app.post("/api/download")
 async def api_download(req: DownloadRequest, background_tasks: BackgroundTasks):
     job_id = str(uuid.uuid4())
+    save_dir = resolve_downloads_dir(req.output_dir)
+
     with jobs_lock:
         jobs[job_id] = {
             "id": job_id,
             "url": req.url,
             "mode": req.mode,
             "quality": req.quality,
-            "is_playlist": req.is_playlist,
+            "download_type": req.download_type,
+            "save_path": save_dir,
             "status": "queued",
             "percent": 0.0,
             "speed": "0 MB/s",
@@ -114,7 +125,7 @@ async def api_download(req: DownloadRequest, background_tasks: BackgroundTasks):
     thread = threading.Thread(target=run_download_job, args=(job_id, req), daemon=True)
     thread.start()
 
-    return {"success": True, "job_id": job_id}
+    return {"success": True, "job_id": job_id, "save_path": save_dir}
 
 
 @app.get("/api/progress/{job_id}")
@@ -127,10 +138,11 @@ async def api_progress(job_id: str):
 
 
 @app.get("/api/downloads")
-async def api_list_downloads():
+async def api_list_downloads(dir: Optional[str] = Query(None)):
+    target_dir = resolve_downloads_dir(dir)
     files = []
-    if os.path.exists(DOWNLOADS_DIR):
-        for entry in os.scandir(DOWNLOADS_DIR):
+    if os.path.exists(target_dir):
+        for entry in os.scandir(target_dir):
             if entry.is_file():
                 size_mb = round(entry.stat().st_size / (1024 * 1024), 2)
                 files.append({
@@ -139,13 +151,14 @@ async def api_list_downloads():
                     "modified": int(entry.stat().st_mtime),
                 })
     files.sort(key=lambda x: x["modified"], reverse=True)
-    return {"files": files, "downloads_dir": DOWNLOADS_DIR}
+    return {"files": files[:20], "downloads_dir": target_dir}
 
 
-@app.post("/api/open-downloads")
-async def api_open_downloads():
+@app.post("/api/open-folder")
+async def api_open_folder(req: OpenFolderRequest):
+    target = resolve_downloads_dir(req.path)
     try:
-        subprocess.Popen(["xdg-open", DOWNLOADS_DIR])
-        return {"success": True}
+        subprocess.Popen(["xdg-open", target])
+        return {"success": True, "path": target}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

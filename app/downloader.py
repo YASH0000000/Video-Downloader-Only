@@ -5,9 +5,19 @@ import yt_dlp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN_FFMPEG = os.path.join(BASE_DIR, "bin", "ffmpeg")
-DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
+DEFAULT_DOWNLOADS_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
+FALLBACK_DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
 
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+# Ensure default directory exists
+os.makedirs(DEFAULT_DOWNLOADS_DIR, exist_ok=True)
+
+
+def resolve_downloads_dir(custom_path: Optional[str] = None) -> str:
+    if custom_path and custom_path.strip():
+        expanded = os.path.abspath(os.path.expanduser(custom_path.strip()))
+        os.makedirs(expanded, exist_ok=True)
+        return expanded
+    return DEFAULT_DOWNLOADS_DIR if os.path.exists(DEFAULT_DOWNLOADS_DIR) else FALLBACK_DOWNLOADS_DIR
 
 
 def format_duration(seconds: Optional[int]) -> str:
@@ -43,34 +53,27 @@ def inspect_url(url: str, cookies_path: Optional[str] = None) -> Dict[str, Any]:
         if not info:
             raise ValueError("Could not retrieve media metadata for URL")
 
-    is_playlist = info.get("_type") == "playlist" or "entries" in info
+    # Determine if link points directly to a playlist or contains a playlist parameter
+    is_direct_playlist = info.get("_type") == "playlist" or "entries" in info
+    has_list_param = "list=" in url.lower()
 
-    if is_playlist:
+    playlist_count = 0
+    playlist_title = None
+
+    if is_direct_playlist:
         entries = list(info.get("entries") or [])
+        playlist_count = len(entries)
+        playlist_title = info.get("title") or "Playlist"
         first_entry = entries[0] if entries else {}
-        return {
-            "is_playlist": True,
-            "title": info.get("title") or "Playlist",
-            "playlist_count": len(entries),
-            "channel": info.get("uploader") or info.get("channel") or "Unknown",
-            "thumbnail": info.get("thumbnails", [{}])[-1].get("url") if info.get("thumbnails") else first_entry.get("thumbnail"),
-            "video_formats": [
-                {"id": "best", "label": "Best Available Quality (Auto-Select)"},
-                {"id": "2160", "label": "4K Ultra HD (2160p)"},
-                {"id": "1440", "label": "2K Quad HD (1440p)"},
-                {"id": "1080", "label": "Full HD (1080p)"},
-                {"id": "720", "label": "HD (720p)"},
-                {"id": "480", "label": "Standard (480p)"},
-                {"id": "360", "label": "Low (360p)"},
-            ],
-            "audio_formats": [
-                {"id": "mp3_320", "label": "MP3 (320 kbps - Ultra High)"},
-                {"id": "mp3_192", "label": "MP3 (192 kbps - Standard High)"},
-                {"id": "m4a", "label": "M4A / AAC (Native Apple Quality)"},
-                {"id": "flac", "label": "FLAC (Lossless Audio)"},
-                {"id": "best_audio", "label": "Best Original Stream (No Transcode)"},
-            ],
-        }
+        thumbnail = info.get("thumbnails", [{}])[-1].get("url") if info.get("thumbnails") else first_entry.get("thumbnail")
+        title = playlist_title
+        author = info.get("uploader") or info.get("channel") or "Unknown"
+        duration = None
+    else:
+        title = info.get("title") or "Video"
+        author = info.get("uploader") or info.get("channel") or "Unknown"
+        duration = format_duration(info.get("duration"))
+        thumbnail = info.get("thumbnail")
 
     formats = info.get("formats", [])
     available_heights = set()
@@ -86,40 +89,53 @@ def inspect_url(url: str, cookies_path: Optional[str] = None) -> Dict[str, Any]:
 
     sorted_heights = sorted(list(available_heights), reverse=True)
 
-    video_options = [{"id": "best", "label": "Best Available (Highest Bitrate & Resolution)"}]
+    video_options = [{"id": "best", "label": "Best Available (Highest Bitrate)"}]
     if has_premium_1080p:
         video_options.append({"id": "1080p_premium", "label": "1080p Premium (Enhanced Bitrate)"})
 
     resolution_labels = {
-        4320: "8K Ultra HD (4320p)",
+        4320: "8K (4320p)",
         2160: "4K Ultra HD (2160p)",
-        1440: "2K Quad HD (1440p)",
-        1080: "Full HD (1080p)",
-        720: "HD (720p)",
-        480: "Standard (480p)",
-        360: "Standard (360p)",
-        240: "Low (240p)",
-        144: "Mobile (144p)",
+        1440: "1440p Quad HD",
+        1080: "1080p Full HD",
+        720: "720p HD",
+        480: "480p",
+        360: "360p",
+        240: "240p",
+        144: "144p",
     }
 
-    for h in sorted_heights:
-        label = resolution_labels.get(h, f"{h}p")
-        video_options.append({"id": str(h), "label": label})
+    if sorted_heights:
+        for h in sorted_heights:
+            label = resolution_labels.get(h, f"{h}p")
+            video_options.append({"id": str(h), "label": label})
+    else:
+        # Fallback preset options if format list is flat
+        video_options.extend([
+            {"id": "2160", "label": "4K Ultra HD (2160p)"},
+            {"id": "1440", "label": "1440p Quad HD"},
+            {"id": "1080", "label": "1080p Full HD"},
+            {"id": "720", "label": "720p HD"},
+            {"id": "480", "label": "480p"},
+        ])
 
     audio_options = [
-        {"id": "mp3_320", "label": "MP3 (320 kbps - High Bitrate)"},
-        {"id": "mp3_192", "label": "MP3 (192 kbps - High Quality)"},
-        {"id": "m4a", "label": "M4A / AAC (Fast & Clean)"},
+        {"id": "mp3_320", "label": "MP3 (320 kbps)"},
+        {"id": "mp3_192", "label": "MP3 (192 kbps)"},
+        {"id": "m4a", "label": "M4A / AAC"},
         {"id": "flac", "label": "FLAC (Lossless)"},
-        {"id": "best_audio", "label": "Best Native Stream (Opus/AAC)"},
+        {"id": "best_audio", "label": "Original Stream (No Transcode)"},
     ]
 
     return {
-        "is_playlist": False,
-        "title": info.get("title") or "Video",
-        "duration": format_duration(info.get("duration")),
-        "channel": info.get("uploader") or info.get("channel") or "Unknown",
-        "thumbnail": info.get("thumbnail"),
+        "title": title,
+        "author": author,
+        "duration": duration,
+        "thumbnail": thumbnail,
+        "is_playlist": is_direct_playlist or has_list_param,
+        "playlist_count": playlist_count,
+        "playlist_title": playlist_title,
+        "default_save_path": resolve_downloads_dir(),
         "video_formats": video_options,
         "audio_formats": audio_options,
     }
@@ -129,22 +145,27 @@ def download_media(
     url: str,
     mode: str,
     quality: str,
-    is_playlist: bool = False,
+    download_type: str = "single",  # "single" or "playlist"
+    playlist_range: Optional[str] = None,
+    output_dir: Optional[str] = None,
     cookies_path: Optional[str] = None,
     progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     opts = get_base_ydl_opts(cookies_path)
+    target_dir = resolve_downloads_dir(output_dir)
 
-    # Parallel fragment downloading for DASH / HLS streams
+    is_playlist = (download_type == "playlist")
+    opts["noplaylist"] = not is_playlist
     opts["concurrent_fragment_downloads"] = 8
     opts["retries"] = 10
     opts["fragment_retries"] = 10
-    opts["noplaylist"] = not is_playlist
 
     if is_playlist:
-        opts["outtmpl"] = os.path.join(DOWNLOADS_DIR, "%(playlist_title)s", "%(playlist_index)02d - %(title)s.%(ext)s")
+        opts["outtmpl"] = os.path.join(target_dir, "%(playlist_title)s", "%(playlist_index)02d - %(title)s.%(ext)s")
+        if playlist_range and playlist_range.strip():
+            opts["playlist_items"] = playlist_range.strip()
     else:
-        opts["outtmpl"] = os.path.join(DOWNLOADS_DIR, "%(title)s.%(ext)s")
+        opts["outtmpl"] = os.path.join(target_dir, "%(title)s.%(ext)s")
 
     if mode == "audio":
         opts["format"] = "ba/b"
@@ -192,7 +213,7 @@ def download_media(
             downloaded = d.get("downloaded_bytes") or 0
             percent = (downloaded / total_bytes * 100) if total_bytes > 0 else 0
             speed = d.get("speed") or 0
-            speed_str = f"{speed / (1024 * 1024):.2f} MB/s" if speed else "Calculating..."
+            speed_str = f"{speed / (1024 * 1024):.1f} MB/s" if speed else "Calculating..."
             eta = d.get("eta")
             eta_str = f"{eta}s" if eta is not None else "Unknown"
 
@@ -225,6 +246,7 @@ def download_media(
             "speed": "Done",
             "eta": "0s",
             "title": title,
+            "save_path": target_dir,
         })
 
-    return {"status": "success", "title": title}
+    return {"status": "success", "title": title, "save_path": target_dir}
