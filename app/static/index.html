@@ -17,7 +17,7 @@
                 </svg>
                 <span class="brand-title">vget</span>
             </div>
-            <button id="open-folder-btn" class="nav-btn" type="button">Open Folder</button>
+            <button id="open-folder-nav-btn" class="nav-btn" type="button">Open Save Folder</button>
         </header>
 
         <!-- Main Card -->
@@ -35,6 +35,29 @@
                         spellcheck="false"
                     >
                     <button id="inspect-btn" class="action-btn" type="button">Inspect</button>
+                </div>
+            </div>
+
+            <!-- Save Destination Folder (Always Visible) -->
+            <div class="field-block location-block">
+                <div class="location-header">
+                    <label for="save-dir-input" class="field-label">Save Location</label>
+                    <button id="open-folder-inline-btn" class="text-link-btn" type="button">Reveal in File Manager</button>
+                </div>
+                <div class="input-row">
+                    <input 
+                        type="text" 
+                        id="save-dir-input" 
+                        class="text-input text-mono" 
+                        placeholder="/home/yash/Downloads"
+                    >
+                    <button id="browse-folder-btn" class="subtle-btn-highlight" type="button">Change Folder...</button>
+                </div>
+                <div class="presets-row">
+                    <span class="preset-label">Quick select:</span>
+                    <button type="button" class="preset-pill active" data-path="/home/yash/Downloads">Downloads</button>
+                    <button type="button" class="preset-pill" data-path="/home/yash/Videos">Videos</button>
+                    <button type="button" class="preset-pill" data-path="/home/yash/Music">Music</button>
                 </div>
             </div>
 
@@ -60,7 +83,7 @@
                 </div>
             </div>
 
-            <!-- Configuration Section -->
+            <!-- Configuration Section (Appears after inspecting) -->
             <div id="config-section" class="config-grid hidden">
                 <!-- Stream Scope: Single vs Playlist -->
                 <div class="scope-row">
@@ -98,21 +121,6 @@
                     <select id="variant-select" class="select-input">
                         <option value="best">Best Available (Auto)</option>
                     </select>
-                </div>
-
-                <!-- Save Destination Folder -->
-                <div class="field-block">
-                    <label for="save-dir-input" class="field-label">Save Location</label>
-                    <div class="input-row">
-                        <input 
-                            type="text" 
-                            id="save-dir-input" 
-                            class="text-input text-mono" 
-                            placeholder="/home/yash/Downloads"
-                        >
-                        <button id="reset-path-btn" class="subtle-btn" type="button" title="Reset to default">Reset</button>
-                    </div>
-                    <span class="field-note">Folder will be created automatically if it does not exist.</span>
                 </div>
 
                 <!-- YouTube Premium / Cookie File Option -->
@@ -155,11 +163,11 @@
         <!-- Download History -->
         <section class="history-panel">
             <div class="history-bar">
-                <span class="section-title">Recent Downloads</span>
+                <span class="section-title">Recent Downloads in Selected Folder</span>
                 <button id="refresh-btn" class="subtle-btn" type="button">Refresh</button>
             </div>
             <div id="files-list" class="files-container">
-                <div class="empty-notice">No files downloaded yet.</div>
+                <div class="empty-notice">No files downloaded in this folder yet.</div>
             </div>
         </section>
     </div>

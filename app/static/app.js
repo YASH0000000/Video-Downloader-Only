@@ -29,7 +29,10 @@ const variantLabel = document.getElementById("variant-label");
 const variantSelect = document.getElementById("variant-select");
 
 const saveDirInput = document.getElementById("save-dir-input");
-const resetPathBtn = document.getElementById("reset-path-btn");
+const browseFolderBtn = document.getElementById("browse-folder-btn");
+const openFolderNavBtn = document.getElementById("open-folder-nav-btn");
+const openFolderInlineBtn = document.getElementById("open-folder-inline-btn");
+const presetPills = document.querySelectorAll(".preset-pill");
 
 const authToggle = document.getElementById("auth-toggle");
 const authContent = document.getElementById("auth-content");
@@ -45,7 +48,6 @@ const progressEta = document.getElementById("progress-eta");
 
 const filesList = document.getElementById("files-list");
 const refreshBtn = document.getElementById("refresh-btn");
-const openFolderBtn = document.getElementById("open-folder-btn");
 
 function showError(msg) {
     errorBanner.textContent = msg;
@@ -55,6 +57,22 @@ function showError(msg) {
 function clearError() {
     errorBanner.textContent = "";
     errorBanner.classList.add("hidden");
+}
+
+function setSaveDirectory(dir) {
+    if (!dir) return;
+    saveDirInput.value = dir;
+    localStorage.setItem("vget_save_dir", dir);
+
+    presetPills.forEach(pill => {
+        if (pill.getAttribute("data-path") === dir) {
+            pill.classList.add("active");
+        } else {
+            pill.classList.remove("active");
+        }
+    });
+
+    loadRecentFiles();
 }
 
 function setScope(scope) {
@@ -154,8 +172,8 @@ function renderMediaData(data) {
         mediaThumb.classList.add("hidden");
     }
 
-    if (data.default_save_path && !saveDirInput.value.trim()) {
-        saveDirInput.value = data.default_save_path;
+    if (!saveDirInput.value.trim() && data.default_save_path) {
+        setSaveDirectory(data.default_save_path);
     }
 
     if (data.is_playlist) {
@@ -310,6 +328,35 @@ async function openSaveDirectory() {
     }
 }
 
+async function browseFolder() {
+    browseFolderBtn.disabled = true;
+    browseFolderBtn.textContent = "Selecting...";
+    try {
+        const res = await fetch("/api/browse-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current_path: saveDirInput.value.trim() || null }),
+        });
+        const data = await res.json();
+        if (data.success && data.selected_path) {
+            setSaveDirectory(data.selected_path);
+        }
+    } catch (err) {
+        console.error("Folder picker error:", err);
+    } finally {
+        browseFolderBtn.disabled = false;
+        browseFolderBtn.textContent = "Change Folder...";
+    }
+}
+
+// Preset pills
+presetPills.forEach(pill => {
+    pill.addEventListener("click", () => {
+        const path = pill.getAttribute("data-path");
+        setSaveDirectory(path);
+    });
+});
+
 // Event bindings
 scopeSingleBtn.addEventListener("click", () => setScope("single"));
 scopePlaylistBtn.addEventListener("click", () => setScope("playlist"));
@@ -319,13 +366,12 @@ modeAudioBtn.addEventListener("click", () => setMode("audio"));
 inspectBtn.addEventListener("click", inspectUrl);
 downloadBtn.addEventListener("click", startDownload);
 refreshBtn.addEventListener("click", loadRecentFiles);
-openFolderBtn.addEventListener("click", openSaveDirectory);
+openFolderNavBtn.addEventListener("click", openSaveDirectory);
+openFolderInlineBtn.addEventListener("click", openSaveDirectory);
+browseFolderBtn.addEventListener("click", browseFolder);
 
-resetPathBtn.addEventListener("click", () => {
-    if (currentMediaData?.default_save_path) {
-        saveDirInput.value = currentMediaData.default_save_path;
-        loadRecentFiles();
-    }
+saveDirInput.addEventListener("change", () => {
+    setSaveDirectory(saveDirInput.value.trim());
 });
 
 authToggle.addEventListener("click", () => {
@@ -349,5 +395,10 @@ urlInput.addEventListener("paste", () => {
     }, 150);
 });
 
-// Initial boot
-loadRecentFiles();
+// Boot: restore saved directory or default
+const savedDir = localStorage.getItem("vget_save_dir");
+if (savedDir) {
+    setSaveDirectory(savedDir);
+} else {
+    loadRecentFiles();
+}

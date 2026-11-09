@@ -186,6 +186,89 @@ body {
     border-color: var(--border-hover);
 }
 
+.subtle-btn-highlight {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-hover);
+    color: var(--fg-main);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.subtle-btn-highlight:hover {
+    background: var(--border);
+    border-color: var(--border-active);
+}
+
+/* Location Header & Presets */
+.location-block {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    padding: 0.9rem;
+    border-radius: var(--radius-md);
+}
+
+.location-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.2rem;
+}
+
+.text-link-btn {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.text-link-btn:hover {
+    color: var(--fg-secondary);
+}
+
+.presets-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.preset-label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-right: 0.2rem;
+}
+
+.preset-pill {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--fg-secondary);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.preset-pill:hover {
+    border-color: var(--border-hover);
+    color: var(--fg-main);
+}
+
+.preset-pill.active {
+    background: var(--border);
+    border-color: var(--border-active);
+    color: var(--fg-main);
+    font-weight: 600;
+}
+
 /* Segmented Control */
 .segmented-control {
     display: grid;

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from .downloader import inspect_url, download_media, resolve_downloads_dir
 
-app = FastAPI(title="Media Downloader", version="1.1.0")
+app = FastAPI(title="Media Downloader", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,9 +38,9 @@ class InspectRequest(BaseModel):
 
 class DownloadRequest(BaseModel):
     url: str
-    mode: str = "video"  # "video" | "audio"
+    mode: str = "video"
     quality: str = "best"
-    download_type: str = "single"  # "single" | "playlist"
+    download_type: str = "single"
     playlist_range: Optional[str] = None
     output_dir: Optional[str] = None
     cookies_path: Optional[str] = None
@@ -48,6 +48,10 @@ class DownloadRequest(BaseModel):
 
 class OpenFolderRequest(BaseModel):
     path: Optional[str] = None
+
+
+class BrowseFolderRequest(BaseModel):
+    current_path: Optional[str] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -162,3 +166,48 @@ async def api_open_folder(req: OpenFolderRequest):
         return {"success": True, "path": target}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/browse-folder")
+async def api_browse_folder(req: BrowseFolderRequest):
+    initial = os.path.expanduser(req.current_path) if req.current_path else os.path.expanduser("~/Downloads")
+    if not os.path.exists(initial):
+        initial = os.path.expanduser("~")
+
+    def pick():
+        # Try kdialog first (native on KDE Plasma)
+        try:
+            env = os.environ.copy()
+            if "DISPLAY" not in env:
+                env["DISPLAY"] = ":0"
+            res = subprocess.run(
+                ["kdialog", "--getexistingdirectory", initial],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env=env,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+
+        # Try zenity fallback
+        try:
+            res = subprocess.run(
+                ["zenity", "--file-selection", "--directory", f"--filename={initial}/"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+        return None
+
+    loop = asyncio.get_event_loop()
+    picked = await loop.run_in_executor(None, pick)
+    if picked:
+        return {"success": True, "selected_path": picked}
+    return {"success": False, "selected_path": None}
